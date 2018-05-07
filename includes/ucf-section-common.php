@@ -21,6 +21,7 @@ if ( ! class_exists( 'UCF_Section_Common' ) ) {
 			$section = null;
 			$class = array( 'ucf-section' );
 			$title = '';
+			$display_title = '';
 			$section_id = '';
 
 			if ( isset( $attr['slug'] ) ) {
@@ -43,13 +44,17 @@ if ( ! class_exists( 'UCF_Section_Common' ) ) {
 					$title = $attr['title'];
 				}
 
+				if ( isset( $attr['display_title'] ) ) {
+					$display_title = $attr['display_title'];
+				}
+
 				if ( isset( $attr['section_id'] ) ) {
 					$section_id = $attr['section_id'];
 				}
 
-				$before = self::ucf_section_display_before( $section, $class, $title, $section_id );
+				$before = self::ucf_section_display_before( $section, $class, $title, $display_title, $section_id );
 				if ( has_filter( 'ucf_section_display_before' ) ) {
-					$before = apply_filters( 'ucf_section_display_before', $before, $section, $class, $title, $section_id );
+					$before = apply_filters( 'ucf_section_display_before', $before, $section, $class, $title, $display_title, $section_id );
 				}
 
 				$content = self::ucf_section_display( $section );
@@ -70,6 +75,59 @@ if ( ! class_exists( 'UCF_Section_Common' ) ) {
 		}
 
 		/**
+		 * Displays the output of the section group taxonomy by looping through its posts.
+		 *
+		 * @author Jonathan Hendricker
+		 * @since 1.0.0
+		 *
+		 * @param $attr Array | An array of attributes.
+		 *
+		 * @return string | The output of the section content.
+		 **/
+		public static function display_section_group( $attr ) {
+			
+			$retval = '';
+			$section = null;
+			$class = array( 'ucf-section' );
+			$title = '';
+			$display_title = '';
+			$section_id = '';
+
+			$atts = array( );
+
+			// Get taxonomy posts
+			if ( isset( $attr['slug'] ) ) {				
+				$section_group_posts = get_posts( array( 					
+					'post_type'	=> 'ucf_section',
+					'tax_query'	=> array(
+						array(
+							'taxonomy'	=> 'section_group',
+							'field'		=> 'slug',
+							'terms'		=> $attr['slug']
+					))
+				));
+			}				
+			
+			if ( !empty($section_group_posts) ){
+				foreach ( $section_group_posts as $section ) {
+			
+					$atts['slug'] 	= $section->post_name; 
+					if ( isset( $attr['class'] ) ) 
+						$atts['class'] 	= $attr['class'];
+					$atts['section_id']	= $section->post_name;
+					$atts['id']		= $section->ID;
+					$atts['title']	= $section->post_title;					
+					if ( isset( $attr['display_title'] ) ) 
+						$atts['display_title'] 	= $attr['display_title'];		
+
+					$retval .= UCF_Section_Common::display_section( $atts );	
+				}
+			} 
+			
+			return $retval;
+		}		
+
+		/**
 		 * Prepends the section content with a section tag.
 		 * Use the `ucf_section_display_before` filter
 		 * hook to override or modify this output.
@@ -84,15 +142,20 @@ if ( ! class_exists( 'UCF_Section_Common' ) ) {
 		 *
 		 * @return string | The html to be appended to output.
 		 **/
-		public static function ucf_section_display_before( $section, $class, $title, $section_id ) {
+		public static function ucf_section_display_before( $section, $class, $title, $display_title, $section_id ) {
 			$class = ' class="' . $class . '"';
+			$section_title = ! empty( $title ) ? $title : '';
 			$title = ! empty( $title ) ? ' data-section-link-title="' . $title . '" role="region" aria-label="' . $title . '"' : '';
+			$display_title = $display_title;
 			$id = ! empty( $section_id ) ? ' id="' . $section_id . '"' : '';
 
 			ob_start();
 		?>
 			<section<?php echo $id; ?><?php echo $class; ?><?php echo $title; ?>>
-		<?php
+		<?php			
+			if ( ($display_title === true || $display_title === 'true') && ! empty($section_title ) )
+				echo "<h3>$section_title</h3>";
+
 			return ob_get_clean();
 		}
 
